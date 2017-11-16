@@ -15,16 +15,27 @@ bool EnCryptoFile(char * file_name, unsigned char * key)
 		if (newFileName[dot_pos] == '.')
 			break;
 	}
-	newFileName.insert(dot_pos, "_Encryped");
+	if (dot_pos > 0)
+	{
+		newFileName.insert(dot_pos, "_Encryped");
+	}
+
 
 	ofstream ofile(newFileName,ios::binary);//输出加密后的文件
 
 	fstream infile(file_name,ios::binary|ios::in);
-	if (!infile)
+	try 
 	{
-		throw "file open erro";
+		if (!infile)
+		{
+			throw "file open erro";
+		}
+	}
+	catch (...)
+	{
 		return false;
 	}
+
 
 
 	long fileSize = SizeOfFile(file_name);

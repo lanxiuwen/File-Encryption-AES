@@ -151,6 +151,7 @@
     <ClCompile Include="CryptoFunction.cpp" />
     <ClCompile Include="CryptoFuntion.h" />
     <ClCompile Include="File.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
