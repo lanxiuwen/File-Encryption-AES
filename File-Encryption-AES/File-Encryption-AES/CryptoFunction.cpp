@@ -3,11 +3,11 @@
 
 bool EnCryptoFile(char * file_name, unsigned char * key)
 {
-	unsigned char Buff[16];//存储待加密数据
+	unsigned char Buff[BuffRows][BUFFKSIZE] = { 0 };//存储待加密数据
 	unsigned char xorBlock[AES::BLOCKSIZE];
-	unsigned char outBlock[AES::BLOCKSIZE];//输出数据块
+	unsigned char outBuff[BuffRows][AES::BLOCKSIZE] = { 0 };//输出数据块
 
-	//加密后文件的名字
+	//生成加密后文件的名字
 	string newFileName(file_name);
 	int dot_pos;
 	for (dot_pos = newFileName.size() - 1; dot_pos >= 0; dot_pos--)
@@ -20,9 +20,9 @@ bool EnCryptoFile(char * file_name, unsigned char * key)
 		newFileName.insert(dot_pos, "_Encryped");
 	}
 
-
-	ofstream ofile(newFileName,ios::binary);//输出加密后的文件
-
+	//打开输出加密后的文件
+	ofstream ofile(newFileName,ios::binary);
+	//打开输入文件
 	fstream infile(file_name,ios::binary|ios::in);
 	try 
 	{
@@ -38,7 +38,13 @@ bool EnCryptoFile(char * file_name, unsigned char * key)
 
 
 
-	long fileSize = SizeOfFile(file_name);
+	long fileSize = SizeOfFile(file_name);//输入文件大小
+	
+	long BuffRound = fileSize / (BuffRows*BUFFKSIZE);//读入缓存区的次数
+	int BuffRest = fileSize - BuffRound * BuffRows*BUFFKSIZE;//最后一次读入缓存区的数据大小
+
+
+
 	long Round = fileSize / BUFFKSIZE;
 	int rest = fileSize%BUFFKSIZE;
 
@@ -46,26 +52,45 @@ bool EnCryptoFile(char * file_name, unsigned char * key)
 	AESEncryption aesEncryptor;//加密实体
 	aesEncryptor.SetKey(key, AES::DEFAULT_KEYLENGTH);//设置加密密钥
 
-	//对前round组数据加密
-	for (long i = 0; i<Round; i++)
+	for (int i = 0; i < BuffRound; i++)
 	{
-		ReadBuffFromFile(Buff, infile);//读入数据
-		aesEncryptor.ProcessAndXorBlock(Buff, xorBlock, outBlock);//加密
-		WriteDataFromBuff(outBlock, ofile);//输出加密后的数据
+		ReadBuffFromFile(Buff[0], infile);//读取数据到BUFF
 
-		ofile.flush();
+		for (long j = 0; j<BuffRows; j++)//加密buff中的数据
+		{
+			aesEncryptor.ProcessAndXorBlock(Buff[j], xorBlock, outBuff[j]);//加密
+		}
+
+		WriteDataFromBuff(outBuff[0], ofile);//输出buff中的数据
+		ClearBuff((char*)Buff[0]);
+		ClearBuff((char*)outBuff);		
+	}
+
+	//处理最后一个BUFF里的数据
+	if (BuffRest != 0)
+	{
+		int ByteRest = BuffRest%BUFFKSIZE;
+		memset((char*)Buff[0], ByteRest, BuffRows*BUFFKSIZE);
+
+		infile.read((char*)Buff[0], BuffRest);
+		int LastBuffRows = BuffRest / BUFFKSIZE;
+	
+		for (int i = 0; i <LastBuffRows ; i++)
+		{
+			aesEncryptor.ProcessAndXorBlock(Buff[i], xorBlock, outBuff[i]);
+		}
+
+		aesEncryptor.ProcessAndXorBlock(Buff[LastBuffRows], xorBlock, outBuff[LastBuffRows]);
+		ofile.write((char*)outBuff[0], (LastBuffRows+1)*BUFFKSIZE);//最后一个BUFF输出有数据的那几行
+
 
 	}
-	//最后一轮数据处理，补零
-	if (rest != 0)
-	{
-		unsigned char restBuff[16];
-		memset(restBuff, rest, 16);
-		infile.read((char*)restBuff, rest);
-		aesEncryptor.ProcessAndXorBlock(restBuff, xorBlock, outBlock);
-		WriteDataFromBuff(outBlock, ofile);//输出加密后的数据
 
-	}
+
+
+
+
+
 
 	infile.close();
 	ofile.close();
@@ -75,9 +100,9 @@ bool EnCryptoFile(char * file_name, unsigned char * key)
 
 bool DeCryptoFile(char * file_name, unsigned char * key)
 {
-	unsigned char Buff[16];//存储待解密数据
+	unsigned char Buff[BuffRows][BUFFKSIZE] = { 0 };//存储待解密数据
 	unsigned char xorBlock[AES::BLOCKSIZE];
-	unsigned char outBlock[AES::BLOCKSIZE];//输出数据块
+	unsigned char outBuff[BuffRows][AES::BLOCKSIZE] = { 0 };//输出数据块
 
    //解密后文件的名字
 	string newFileName(file_name);
@@ -100,43 +125,51 @@ bool DeCryptoFile(char * file_name, unsigned char * key)
 	}
 
 
-	long fileSize = SizeOfFile(file_name);
+	long fileSize = SizeOfFile(file_name);//输入文件大小
 
-	//int rest = fileSize - Round*BUFFKSIZE;
-	long Round = fileSize / BUFFKSIZE;
+	long BuffRound = fileSize / (BuffRows*BUFFKSIZE);//读入缓存区的次数
+	int BuffRest = fileSize - BuffRound * BuffRows*BUFFKSIZE;//最后一次读入缓存区的数据大小
+
+
+
 	memset(xorBlock, 0, AES::BLOCKSIZE);//置零
+
 	AESDecryption aesDecryptor;//加密实体
 	aesDecryptor.SetKey(key, AES::DEFAULT_KEYLENGTH);//设置解密密钥
 
-													 //对前round组数据解密
-	for (long i = 0; i<(Round-1); i++)
+	//对前BUFFROUND组buff解密
+	for (int i = 0; i < BuffRound; i++)
 	{
-		ReadBuffFromFile(Buff, infile);//读入数据
-		aesDecryptor.ProcessAndXorBlock(Buff, xorBlock, outBlock);//解密
-		WriteDataFromBuff(outBlock, ofile);//输出加密后的数据
-										   //cout.write((char*)outBlock, BUFFKSIZE);
+		ReadBuffFromFile(Buff[0], infile);//读取数据到BUFF
+
+		for (long j = 0; j<BuffRows; j++)//解密buff中的数据
+		{
+			aesDecryptor.ProcessAndXorBlock(Buff[j], xorBlock, outBuff[j]);//解密
+		}
+		WriteDataFromBuff(outBuff[0], ofile);//输出buff中的数据
+		ClearBuff((char*)Buff[0]);
+		ClearBuff((char*)outBuff);
 	}
-	//最后一轮数据处理
-	ReadBuffFromFile(Buff, infile);//读入数据
-	aesDecryptor.ProcessAndXorBlock(Buff, xorBlock, outBlock);//解密
 
-	int bitrest = outBlock[15];
-	ofile.write((char*)outBlock, bitrest);
-	//for (int i = 0; i < bitrest; i++)
-	//{
-	//	ofile << outBlock[i];
-	//	ofile.flush();
-
-	//}
+	//处理最后一个BUFF里的数据
+	if (BuffRest != 0)
+	{
 
 
-	//if (rest != 0)
-	//{
-	//	unsigned char restBuff[16] = { 0 };
-	//	infile.read((char*)restBuff, rest);
-	//	aesDecryptor.ProcessAndXorBlock(restBuff, xorBlock, outBlock);
-	//	WriteDataFromBuff(outBlock, ofile);//输出解密后的数据
-	//}
+		infile.read((char*)Buff[0], BuffRest);
+		int LastBuffRows = BuffRest / BUFFKSIZE;
+
+		for (int i = 0; i <LastBuffRows; i++)
+		{
+			aesDecryptor.ProcessAndXorBlock(Buff[i], xorBlock, outBuff[i]);
+		}
+
+		int ByteRest = outBuff[LastBuffRows - 1][BUFFKSIZE - 1];
+
+		ofile.write((char*)outBuff[0], BuffRest+ByteRest-BUFFKSIZE);
+
+
+	}
 
 
 	infile.close();

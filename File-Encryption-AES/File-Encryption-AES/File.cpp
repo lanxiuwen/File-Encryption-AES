@@ -17,11 +17,15 @@ long SizeOfFile(char * file_loc)
 
 void ReadBuffFromFile(unsigned char * buff, fstream &infile)//读取一个BUFF
 {
-	infile.read((char*)buff, BUFFKSIZE);
+	infile.read((char*)buff, BUFFKSIZE*BuffRows);
 }
 
 void WriteDataFromBuff(unsigned char * buff, ofstream & ofile)//写一个buff
 {
-	ofile.write((char*)buff, BUFFKSIZE);
+	ofile.write((char*)buff, BUFFKSIZE*BuffRows);
 }
 
+void ClearBuff(char * Buff)
+{
+	memset(Buff, 0, BuffRows*BUFFKSIZE);
+}
