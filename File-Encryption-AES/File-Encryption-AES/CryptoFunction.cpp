@@ -38,25 +38,25 @@ bool EnCryptoFile(char * file_name, unsigned char * key)
 
 
 
-	long fileSize = SizeOfFile(file_name);//输入文件大小
+	long long  fileSize = SizeOfFile(file_name);//输入文件大小
 	
-	long BuffRound = fileSize / (BuffRows*BUFFKSIZE);//读入缓存区的次数
+	long long BuffRound = fileSize / (BuffRows*BUFFKSIZE);//读入缓存区的次数
 	int BuffRest = fileSize - BuffRound * BuffRows*BUFFKSIZE;//最后一次读入缓存区的数据大小
 
 
 
-	long Round = fileSize / BUFFKSIZE;
+	long long Round = fileSize / BUFFKSIZE;
 	int rest = fileSize%BUFFKSIZE;
 
 	memset(xorBlock, 0, AES::BLOCKSIZE);//置零
 	AESEncryption aesEncryptor;//加密实体
 	aesEncryptor.SetKey(key, AES::DEFAULT_KEYLENGTH);//设置加密密钥
 
-	for (int i = 0; i < BuffRound; i++)
+	for (long long i = 0; i < BuffRound; i++)
 	{
 		ReadBuffFromFile(Buff[0], infile);//读取数据到BUFF
 
-		for (long j = 0; j<BuffRows; j++)//加密buff中的数据
+		for (int j = 0; j<BuffRows; j++)//加密buff中的数据
 		{
 			aesEncryptor.ProcessAndXorBlock(Buff[j], xorBlock, outBuff[j]);//加密
 		}
@@ -67,7 +67,7 @@ bool EnCryptoFile(char * file_name, unsigned char * key)
 	}
 
 	//处理最后一个BUFF里的数据
-	if (BuffRest != 0)
+11	if (BuffRest != 0)
 	{
 		int ByteRest = BuffRest%BUFFKSIZE;
 		memset((char*)Buff[0], ByteRest, BuffRows*BUFFKSIZE);
@@ -125,9 +125,9 @@ bool DeCryptoFile(char * file_name, unsigned char * key)
 	}
 
 
-	long fileSize = SizeOfFile(file_name);//输入文件大小
+	long long  fileSize = SizeOfFile(file_name);//输入文件大小
 
-	long BuffRound = fileSize / (BuffRows*BUFFKSIZE);//读入缓存区的次数
+	long long BuffRound = fileSize / (BuffRows*BUFFKSIZE);//读入缓存区的次数
 	int BuffRest = fileSize - BuffRound * BuffRows*BUFFKSIZE;//最后一次读入缓存区的数据大小
 
 
@@ -138,7 +138,7 @@ bool DeCryptoFile(char * file_name, unsigned char * key)
 	aesDecryptor.SetKey(key, AES::DEFAULT_KEYLENGTH);//设置解密密钥
 
 	//对前BUFFROUND组buff解密
-	for (int i = 0; i < BuffRound; i++)
+	for (long long i = 0; i < BuffRound; i++)
 	{
 		ReadBuffFromFile(Buff[0], infile);//读取数据到BUFF
 

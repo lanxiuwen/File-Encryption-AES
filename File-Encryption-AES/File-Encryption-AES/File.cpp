@@ -3,10 +3,10 @@
 
 using namespace std;
 
-long SizeOfFile(char * file_loc)
+long long SizeOfFile(char * file_loc)
 {
-	long size;
-	fstream file(file_loc);
+	long long size;
+	fstream file(file_loc,ios::binary|ios::in);
 	if (!file)
 		return -1;
 	file.seekg(0, ios::end);
